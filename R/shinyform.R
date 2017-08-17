@@ -1,4 +1,5 @@
 library(shiny)
+library(shinyjs)
 
 #' @export
 STORAGE_TYPES <- list(
@@ -123,8 +124,10 @@ formUI <- function(formInfo) {
               input <- numericInput(ns(question$id), NULL, 0)
             } else if (question$type == "checkbox") {
               input <- checkboxInput(ns(question$id), label, FALSE)
+            } else if (question$type == "radio") {
+              input <- radioButtons(ns(question$id), label, FALSE)
             }
-
+            
             div(
               class = "sf-question",
               if (question$type != "checkbox") {
@@ -181,8 +184,8 @@ formUI <- function(formInfo) {
         actionButton(ns("submitPw"), "Log in")
       ),
       shinyjs::hidden(div(id = ns("showAnswers"),
-          downloadButton(ns("downloadBtn"), "Download responses"),
-          DT::dataTableOutput(ns("responsesTable"))
+                          downloadButton(ns("downloadBtn"), "Download responses"),
+                          DT::dataTableOutput(ns("responsesTable"))
       ))
     )),
     
@@ -234,7 +237,7 @@ formServerHelper <- function(input, output, session, formInfo) {
   
   # When the Submit button is clicked, submit the response
   observeEvent(input$submit, {
-
+    
     # User-experience stuff
     shinyjs::disable("submit")
     shinyjs::show("submit_msg")
@@ -243,7 +246,7 @@ formServerHelper <- function(input, output, session, formInfo) {
       shinyjs::enable("submit")
       shinyjs::hide("submit_msg")
     })
-
+    
     if (!is.null(formInfo$validations)) {
       errors <- unlist(lapply(
         formInfo$validations, function(validation) {
@@ -296,7 +299,8 @@ formServerHelper <- function(input, output, session, formInfo) {
   
   # Gather all the form inputs (and add timestamp)
   formData <- reactive({
-    data <- sapply(fieldsAll, function(x) input[[x]])
+    data <- as.character(formInfo$name)
+    data <- c(data, sapply(fieldsAll, function(x) input[[x]]))
     data <- c(data, timestamp = as.integer(Sys.time()))
     data <- t(data)
     data
@@ -326,7 +330,7 @@ formServerHelper <- function(input, output, session, formInfo) {
   observeEvent(input$showhide, {
     shinyjs::toggle("answers")
   })
-
+  
   observeEvent(input$submitPw, {
     if (input$adminpw == formInfo$password) {
       values$adminVerified <- TRUE
@@ -334,7 +338,7 @@ formServerHelper <- function(input, output, session, formInfo) {
       shinyjs::hide("pw-box")
     }
   })
-
+  
   # Allow admins to download responses
   output$downloadBtn <- downloadHandler(
     filename = function() {
